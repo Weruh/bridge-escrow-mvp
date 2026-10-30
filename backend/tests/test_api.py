@@ -396,3 +396,25 @@ def test_hosted_app_does_not_initialize_database_on_startup(monkeypatch):
     response = hosted_app.test_client().get('/api/health')
     assert response.status_code == 200
     assert response.get_json()['status'] == 'healthy'
+
+
+def test_hosted_sqlite_uses_persistent_disk_without_initializing_on_import(monkeypatch):
+    class HostedSqliteConfig(TestConfig):
+        APP_ENV = 'hosted'
+        SQLALCHEMY_DATABASE_URI = 'sqlite:////var/data/bridge_escrow.db'
+
+    def fail_if_called():
+        raise AssertionError('Hosted startup must not create tables')
+
+    monkeypatch.setattr(db, 'create_all', fail_if_called)
+    hosted_app = create_app(HostedSqliteConfig)
+    assert hosted_app.test_client().get('/api/health').status_code == 200
+
+
+def test_hosted_sqlite_rejects_temporary_path():
+    class TemporarySqliteConfig(TestConfig):
+        APP_ENV = 'hosted'
+        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/bridge_escrow.db'
+
+    with pytest.raises(RuntimeError, match='persistent /var/data'):
+        create_app(TemporarySqliteConfig)

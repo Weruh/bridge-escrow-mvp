@@ -10,8 +10,9 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     if app.config['APP_ENV'] == 'hosted':
-        if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgresql+psycopg2://'):
-            raise RuntimeError('Hosted deployments require a PostgreSQL DATABASE_URL.')
+        database_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        if not (database_uri.startswith('postgresql+psycopg2://') or database_uri.startswith('sqlite:////var/data/')):
+            raise RuntimeError('Hosted deployments require PostgreSQL or SQLite on the persistent /var/data disk.')
         if not app.config['SECRET_KEY'] or not app.config['JWT_SECRET_KEY'] or app.config['SECRET_KEY'] == 'bridge-escrow-dev-super-secret-key-2026' or app.config['JWT_SECRET_KEY'] == 'jwt-dev-secret-token-key-2026':
             raise RuntimeError('Hosted deployments require unique SECRET_KEY and JWT_SECRET_KEY values.')
     
