@@ -379,3 +379,20 @@ def test_hosted_demo_disables_insecure_recovery_and_provider_callback(client):
         assert client.post('/api/payments/mpesa/callback', json={}).status_code == 403
     finally:
         client.application.config['APP_ENV'] = 'local'
+
+
+def test_hosted_app_does_not_initialize_database_on_startup(monkeypatch):
+    pytest.importorskip('psycopg2')
+
+    class HostedConfig(TestConfig):
+        APP_ENV = 'hosted'
+        SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://demo:demo@127.0.0.1:1/demo'
+
+    def fail_if_called():
+        raise AssertionError('Hosted startup must not create tables')
+
+    monkeypatch.setattr(db, 'create_all', fail_if_called)
+    hosted_app = create_app(HostedConfig)
+    response = hosted_app.test_client().get('/api/health')
+    assert response.status_code == 200
+    assert response.get_json()['status'] == 'healthy'

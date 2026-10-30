@@ -10,7 +10,14 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
     
     # SQLite default, postgresql compatible
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f"sqlite:///{os.path.join(BASE_DIR, 'bridge_escrow.db')}"
+    DATABASE_URL = os.environ.get('DATABASE_URL', '')
+    # Normalize provider URLs and choose the psycopg2 driver in requirements.txt.
+    if DATABASE_URL.startswith('postgres://'):
+        SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://' + DATABASE_URL[len('postgres://'):]
+    elif DATABASE_URL.startswith('postgresql://'):
+        SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://' + DATABASE_URL[len('postgresql://'):]
+    else:
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL or f"sqlite:///{os.path.join(BASE_DIR, 'bridge_escrow.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
     CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')

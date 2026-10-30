@@ -2,19 +2,18 @@
 
 Flask API for the BridgeEscrow **demo**. Payments are simulated and seller settlement is recorded only in the internal ledger. Do not use this deployment to collect or hold real money.
 
-## Deploy on Render
+## Deploy on Vercel
 
-1. Push the monorepo to GitHub.
-2. In Render, choose **New → Blueprint**, connect the repository, and select the root `render.yaml`.
-3. The Blueprint creates a Python web service and a Render Postgres database. Set `CORS_ORIGINS` to your exact Vercel frontend origin, for example `https://bridge-escrow.vercel.app` (no trailing slash). The Blueprint generates `SECRET_KEY` and `JWT_SECRET_KEY`.
-4. Deploy, then open `https://YOUR-API.onrender.com/api/health`. It should return JSON with `status: healthy`.
-5. In Vercel, set `VITE_API_BASE_URL` to `https://YOUR-API.onrender.com/api` and redeploy the frontend. After the Vercel URL is known, update `CORS_ORIGINS` in Render if necessary.
+1. Create an external PostgreSQL database. Use its connection string in `DATABASE_URL`; `postgres://` and `postgresql://` URL schemes are supported.
+2. Create a separate Vercel project from this GitHub repository with **Root Directory** `backend` and **Framework Preset** Flask. `wsgi.py` exports the Flask application for Vercel's Python runtime. No custom build or output command is needed.
+3. Set Production environment variables: `APP_ENV=hosted`, `DATABASE_URL`, unique `SECRET_KEY` and `JWT_SECRET_KEY`, `MPESA_ENV=sandbox`, and `CORS_ORIGINS=https://YOUR-FRONTEND.vercel.app` (exact origin, no trailing slash). Set `SEED_DEMO_DATA=true` for public demo accounts, or `false` otherwise.
+4. Initialize the database once from a trusted terminal with `DATABASE_URL`, `APP_ENV=hosted`, `SECRET_KEY`, `JWT_SECRET_KEY`, and `SEED_DEMO_DATA` set locally: `python -m flask --app app init-db`. Run it with the same database URL used by the Vercel backend. `init-db` creates the tables and seeds demo data only when enabled and the users table is empty. Do not run it as a Vercel build command.
+5. Deploy and open `https://YOUR-BACKEND.vercel.app/api/health`. It should return JSON with `status: healthy`.
+6. Set the frontend Vercel project's `VITE_API_BASE_URL` to `https://YOUR-BACKEND.vercel.app/api`. Redeploy the frontend after changing that build-time setting.
 
-For manual Render setup, set the Root Directory to `backend`, use Python 3.12, `pip install -r requirements.txt` as the build command and `gunicorn 'app:create_app()' --bind 0.0.0.0:$PORT --workers 1 --threads 4` as the start command. Set `APP_ENV=hosted`, `MPESA_ENV=sandbox`, `DATABASE_URL` to a PostgreSQL connection string, unique `SECRET_KEY` and `JWT_SECRET_KEY`, and `CORS_ORIGINS` to the frontend origin.
+For local development, the default SQLite database is initialized automatically. Hosted application startup does not create tables or seed data. The existing `render.yaml` is an alternative deployment configuration and also needs the one-time `init-db` command.
 
-`SEED_DEMO_DATA=true` creates the public sample accounts on a new database for presentations. Everyone with the sample credentials can access those accounts, so keep all data synthetic. Set it to `false` for a private deployment. The app creates tables on startup; a future production release should replace this with database migrations.
-
-Render's free web service can sleep when idle, and its free Postgres database expires after 30 days. Use a durable database plan if deals must persist beyond a short demo.
+`SEED_DEMO_DATA=true` creates public sample accounts only on an empty database. Everyone with the sample credentials can access those accounts, so keep all data synthetic. The current schema setup uses `create_all`; replace it with migrations before a production release.
 
 ## Local development
 

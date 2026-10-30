@@ -2,15 +2,19 @@
 
 This repository contains the React/Vite frontend in `frontend/` and the Flask API in `backend/`. The hosted configuration is a **demo**: payments are simulated, wallet balances are internal ledger records, and no real M-Pesa payout occurs.
 
-## Deploy
+## Deploy both apps on Vercel
 
-1. Import this repository into Render as a Blueprint using the root `render.yaml`. It creates a web service rooted at `backend/` and a Postgres database. Set `CORS_ORIGINS` to the exact Vercel site origin.
-2. Verify `https://YOUR-API.onrender.com/api/health` returns `status: healthy`.
-3. Import the same repository into Vercel. Set **Root Directory** to `frontend`, **Framework** to Vite, **Build Command** to `npm run build`, and **Output Directory** to `dist`.
-4. In Vercel, set `VITE_API_BASE_URL=https://YOUR-API.onrender.com/api` and deploy. Update Render's `CORS_ORIGINS` to the actual Vercel URL if needed.
-5. Test sign-in, deal creation, buyer/seller messaging, a page refresh on `/transactions/<reference>`, and the simulated payment flow.
+Create **two Vercel projects from this same GitHub repository**:
 
-The Blueprint enables demo data on an empty database. Use only synthetic information: the sample account credentials are public. Render's free Postgres database expires after 30 days, so select a durable plan before keeping real user data.
+1. Provision an external PostgreSQL database and copy its connection URL. Vercel Functions cannot use a local SQLite file for persistent data.
+2. Import the repository for the API project. Set **Root Directory** to `backend` and **Framework Preset** to Flask. Leave the build and output settings at their defaults. Vercel discovers `wsgi.py` and its `app` instance.
+3. Set backend environment variables for Production: `APP_ENV=hosted`, `DATABASE_URL` to the PostgreSQL URL, unique `SECRET_KEY` and `JWT_SECRET_KEY`, `MPESA_ENV=sandbox`, and `CORS_ORIGINS` to the exact frontend origin (for example `https://bridge-escrow-mvp.vercel.app`, without a trailing slash). Set `SEED_DEMO_DATA=true` only if you want public demonstration accounts.
+4. Initialize the database once from a trusted local terminal using the same database URL and hosted environment variables: `cd backend && python -m flask --app app init-db`. This creates tables and, when `SEED_DEMO_DATA=true`, seeds demo accounts in an empty database. Do this before using the deployed API. Do not put database secrets in Git or in the frontend project.
+5. Deploy the backend and verify `https://YOUR-BACKEND.vercel.app/api/health` returns `status: healthy`.
+6. Import the repository again for the frontend project. Set **Root Directory** to `frontend`, **Framework Preset** to Vite, **Build Command** to `npm run build`, and **Output Directory** to `dist`. Set `VITE_API_BASE_URL=https://YOUR-BACKEND.vercel.app/api` for Production, then deploy.
+7. Update the backend project's `CORS_ORIGINS` to the actual frontend URL if it differs from the planned URL, and redeploy the backend. Test sign-in, deal creation, buyer/seller messaging, a page refresh on `/transactions/<reference>`, and the simulated payment flow.
+
+The sample credentials are public; use only synthetic information. Password recovery and real payment collection are unavailable in the hosted demo. The existing `render.yaml` remains available if you choose Render instead; initialize its PostgreSQL database with the same `init-db` command before using it.
 
 ## Local development
 

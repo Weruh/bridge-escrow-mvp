@@ -10,7 +10,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     if app.config['APP_ENV'] == 'hosted':
-        if not os.environ.get('DATABASE_URL') or not os.environ['DATABASE_URL'].startswith('postgresql://'):
+        if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgresql+psycopg2://'):
             raise RuntimeError('Hosted deployments require a PostgreSQL DATABASE_URL.')
         if not app.config['SECRET_KEY'] or not app.config['JWT_SECRET_KEY'] or app.config['SECRET_KEY'] == 'bridge-escrow-dev-super-secret-key-2026' or app.config['JWT_SECRET_KEY'] == 'jwt-dev-secret-token-key-2026':
             raise RuntimeError('Hosted deployments require unique SECRET_KEY and JWT_SECRET_KEY values.')
@@ -52,16 +52,27 @@ def create_app(config_class=Config):
 
     @app.cli.command("seed-db")
     def seed_cmd():
+        db.create_all()
         seed_database()
         print("Database seeded successfully via CLI.")
-        
-    # Auto initialize SQLite tables and seed if brand new
-    with app.app_context():
+
+    @app.cli.command("init-db")
+    def init_cmd():
         db.create_all()
-        # Seed if users table is empty
-        from models.user import User
-        if app.config['SEED_DEMO_DATA'] and User.query.count() == 0:
-            seed_database()
+        if app.config['SEED_DEMO_DATA']:
+            from models.user import User
+            if User.query.count() == 0:
+                seed_database()
+        print("Database initialized successfully via CLI.")
+
+    # Keep the local demo easy to run; hosted functions must not mutate the
+    # database whenever a new instance starts.
+    if app.config['APP_ENV'] != 'hosted':
+        with app.app_context():
+            db.create_all()
+            from models.user import User
+            if app.config['SEED_DEMO_DATA'] and User.query.count() == 0:
+                seed_database()
             
     return app
 
