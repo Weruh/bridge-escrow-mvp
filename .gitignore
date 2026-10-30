@@ -1,0 +1,15 @@
+# Local secrets and databases
+.env
+.env.*
+!.env.example
+*.db
+*.db-journal
+
+# Python and Node build artifacts
+.venv*/
+__pycache__/
+.pytest_cache/
+node_modules/
+dist/
+*.pyc
+*.tsbuildinfo
